@@ -2,6 +2,7 @@
 using System.Linq.Dynamic.Core.Validation;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Threading;
 
 namespace System.Linq.Dynamic.Core.CustomTypeProviders;
 
@@ -16,8 +17,8 @@ public class DefaultDynamicLinqCustomTypeProvider : AbstractDynamicLinqCustomTyp
 {
     private readonly IAssemblyHelper _assemblyHelper;
     private readonly bool _cacheCustomTypes;
+    private readonly Lazy<HashSet<Type>>? _cachedCustomTypes;
 
-    private HashSet<Type>? _cachedCustomTypes;
     private Dictionary<Type, List<MethodInfo>>? _cachedExtensionMethods;
 
      /// <summary>
@@ -49,6 +50,9 @@ public class DefaultDynamicLinqCustomTypeProvider : AbstractDynamicLinqCustomTyp
     {
         _assemblyHelper = new DefaultAssemblyHelper(Check.NotNull(config));
         _cacheCustomTypes = cacheCustomTypes;
+        _cachedCustomTypes = cacheCustomTypes
+            ? new Lazy<HashSet<Type>>(GetCustomTypesInternal, LazyThreadSafetyMode.ExecutionAndPublication)
+            : null;
     }
 
     /// <inheritdoc cref="IDynamicLinqCustomTypeProvider.GetCustomTypes"/>
@@ -56,12 +60,7 @@ public class DefaultDynamicLinqCustomTypeProvider : AbstractDynamicLinqCustomTyp
     {
         if (_cacheCustomTypes)
         {
-            if (_cachedCustomTypes == null)
-            {
-                _cachedCustomTypes = GetCustomTypesInternal();
-            }
-
-            return _cachedCustomTypes;
+            return _cachedCustomTypes!.Value;
         }
 
         return GetCustomTypesInternal();
